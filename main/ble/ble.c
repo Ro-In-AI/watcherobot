@@ -341,6 +341,8 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
        	    break;
 
         case ESP_GATTS_WRITE_EVT:
+            ESP_LOGI(BLE_TAG, "GATT_WRITE_EVT, handle = %d, len = %d, is_prep = %d, need_rsp = %d",
+                     param->write.handle, param->write.len, param->write.is_prep, param->write.need_rsp);
             if (!param->write.is_prep) {
                 ESP_LOGI(BLE_TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
                 if (param->write.value != NULL && param->write.len > 0) {

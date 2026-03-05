@@ -24,16 +24,14 @@ static void on_command_received(const char* cmd, const char* params)
     }
 
     if (strcmp(cmd, "SET_SERVO") == 0) {
-        // 解析: SET_SERVO:0:90:TIME:500
+        // 解析: SET_SERVO:0:90
         uint8_t id, angle;
-        uint16_t duration;
-        // 修复: 使用冒号分隔
-        int parsed = sscanf(params, "%hhu:%hhu:TIME:%hu", &id, &angle, &duration);
-        if (parsed != 3) {
+        int parsed = sscanf(params, "%hhu:%hhu", &id, &angle);
+        if (parsed != 2) {
             printf("[app] ERROR: Failed to parse SET_SERVO params\n");
             return;
         }
-        servo_set_angle(id, angle, duration);
+        servo_set_angle(id, angle, 0);
     }
     else if (strcmp(cmd, "PLAY_ACTION") == 0) {
         // 修复 MEDIUM: atoi() 不提供错误检测，使用 strtol() 代替

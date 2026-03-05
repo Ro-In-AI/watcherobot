@@ -23,6 +23,24 @@ static uint8_t current_angles[SERVO_COUNT] = {0, 0};
 #define SERVO_MAX_PULSE 2500  // 2.5ms
 #define SERVO_PERIOD_US 20000 // 20ms
 
+// 获取角度限位
+static void get_angle_limits(uint8_t servo_id, uint8_t *min_angle, uint8_t *max_angle) {
+    if (servo_id == 0) {
+        *min_angle = SERVO_X_MIN;
+        *max_angle = SERVO_X_MAX;
+    } else {
+        *min_angle = SERVO_Y_MIN;
+        *max_angle = SERVO_Y_MAX;
+    }
+}
+
+// 角度转换为占空比
+static uint32_t angle_to_duty(uint8_t angle) {
+    uint32_t pulse_us = SERVO_MIN_PULSE + (angle * (SERVO_MAX_PULSE - SERVO_MIN_PULSE) / 180);
+    // 占空比 = pulse_us / period_us * 2^duty_resolution
+    return (pulse_us * (1 << SERVO_RESOLUTION_BITS)) / SERVO_PERIOD_US;
+}
+
 esp_err_t servo_init(void) {
     // 配置 LEDC 定时器
     ledc_timer_config_t timer = {
@@ -57,20 +75,23 @@ esp_err_t servo_init(void) {
     };
     ledc_channel_config(&channel2);
 
+    // 初始位置设置为限位中间值
+    current_angles[0] = (SERVO_X_MIN + SERVO_X_MAX) / 2;
+    current_angles[1] = (SERVO_Y_MIN + SERVO_Y_MAX) / 2;
+
+    // 设置初始位置
+    for (int i = 0; i < SERVO_COUNT; i++) {
+        uint32_t duty = angle_to_duty(current_angles[i]);
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, i, duty);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, i);
+    }
+
     ESP_LOGI(TAG, "initialized");
     return ESP_OK;
 }
 
-// 角度转换为占空比
-static uint32_t angle_to_duty(uint8_t angle) {
-    uint32_t pulse_us = SERVO_MIN_PULSE + (angle * (SERVO_MAX_PULSE - SERVO_MIN_PULSE) / 180);
-    // 占空比 = pulse_us / period_us * 2^duty_resolution
-    return (pulse_us * (1 << SERVO_RESOLUTION_BITS)) / SERVO_PERIOD_US;
-}
-
 esp_err_t servo_set_angle(uint8_t servo_id, uint8_t angle, uint16_t duration_ms) {
-    // Note: duration_ms parameter is reserved for future async implementation
-    // Current implementation is synchronous, so this parameter is not used yet
+    (void)duration_ms;  // 暂时不使用
 
     if (servo_id >= SERVO_COUNT) {
         ESP_LOGW(TAG, "invalid servo_id: %d", servo_id);
@@ -79,13 +100,7 @@ esp_err_t servo_set_angle(uint8_t servo_id, uint8_t angle, uint16_t duration_ms)
 
     // 角度限位检查
     uint8_t min_angle, max_angle;
-    if (servo_id == 0) {
-        min_angle = SERVO_X_MIN;
-        max_angle = SERVO_X_MAX;
-    } else {
-        min_angle = SERVO_Y_MIN;
-        max_angle = SERVO_Y_MAX;
-    }
+    get_angle_limits(servo_id, &min_angle, &max_angle);
 
     if (angle < min_angle || angle > max_angle) {
         ESP_LOGE(TAG, "servo %d angle out of range: %d (valid: %d~%d)",
@@ -117,5 +132,5 @@ esp_err_t servo_get_angle(uint8_t servo_id, uint8_t *angle) {
 }
 
 void servo_task(void) {
-    // 当前为同步实现，如需平滑移动可在 FreeRTOS 任务中处理
+    // 暂时不需要
 }

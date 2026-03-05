@@ -47,10 +47,10 @@ main/
 ## BLE 命令协议
 
 ```
-SET_SERVO:0:90:TIME:500   # 设置舵机0到90度，耗时500ms
-SET_SERVO:1:45:TIME:300   # 设置舵机1到45度，耗时300ms
-PLAY_ACTION:0              # 播放预设动作0 (wave)
-PLAY_ACTION:1              # 播放预设动作1 (greet)
+SET_SERVO:0:90    # 设置X轴(舵机0)到90度
+SET_SERVO:1:120    # 设置Y轴(舵机1)到120度
+PLAY_ACTION:0      # 播放预设动作0 (wave)
+PLAY_ACTION:1      # 播放预设动作1 (greet)
 ```
 
 ## 预设动作
@@ -71,7 +71,7 @@ PLAY_ACTION:1              # 播放预设动作1 (greet)
 
 ## MTU 配置
 
-- **本地 MTU**: 512 字节（在 `ble.c` 中设置）
+- **本地 MTU**: 512 字节（在 `ble.c` 中设置，建议连接后手动请求 MTU 512）
 - **特征值最大长度**: 500 字节
 
 如需修改 MTU，在 `main/ble/ble.c` 中找到：
@@ -132,14 +132,14 @@ idf.py -p PORT flash monitor
 写入特征值 **0xFF01**：
 
 ```
-# 设置X轴(舵机0)到90度，耗时500ms
-SET_SERVO:0:90:TIME:500
+# 设置X轴(舵机0)到90度
+SET_SERVO:0:90
 
-# 设置Y轴(舵机1)到120度，耗时300ms
-SET_SERVO:1:120:TIME:300
+# 设置Y轴(舵机1)到120度
+SET_SERVO:1:120
 ```
 
-格式: `SET_SERVO:<舵机ID>:<角度>:<TIME>:<耗时(ms)>`
+格式: `SET_SERVO:<舵机ID>:<角度>`
 
 #### 播放预设动作
 
@@ -160,7 +160,7 @@ PLAY_ACTION:1
 2. 点击服务右侧的七星图标（Discover Services）
 3. 找到 "SERVO CTRL" 特征 (UUID: 0xFF01)
 4. 点击右上角菜单，选择 **"Write Request"**（不是 Write Without Response）
-5. 输入命令：`SET_SERVO:1:110:TIME:300`
+5. 输入命令：`SET_SERVO:1:110`
 6. 在底部文本框输入后点击发送按钮
 
 **注意**：必须使用 "Write Request"，否则数据会被截断。
