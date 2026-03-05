@@ -1,49 +1,166 @@
 | Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-S3 |
 | ----------------- | ----- | -------- | -------- | -------- | -------- | -------- |
 
-# ESP-IDF Gatt Server Service Table Example
+# BLE 遥控机器人 (WatcherRobotBody)
 
-This example shows how to create a GATT service with an attribute table defined in one place. Provided API releases the user from adding attributes one by one as implemented in BLUEDROID. A demo of the other method to create the attribute table is presented in [gatt_server_demo](../gatt_server).
+基于 ESP32 的 BLE 遥控机器人项目，支持通过蓝牙远程控制两个 PWM 舵机，具有平滑移动和预设动作功能。后续可扩展 UART 与其他 MCU 通信。
 
-Please, check this [tutorial](tutorial/Gatt_Server_Service_Table_Example_Walkthrough.md) for more information about this example.
+## 项目架构
 
-## How to Use Example
+```
+main/
+├── app_main.c              # 应用入口
+├── command/                # 命令解析层
+│   ├── command.h
+│   └── command.c
+├── servo/                  # 舵机控制层
+│   ├── servo.h
+│   └── servo.c
+├── action/                 # 动作管理层
+│   ├── action.h
+│   └── action.c
+├── ble/                    # BLE 通信层
+│   ├── ble.h
+│   └── ble.c
+└── CMakeLists.txt
+```
 
-Before project configuration and build, be sure to set the correct chip target using:
+### 分层说明
+
+| 模块 | 功能 |
+|------|------|
+| **command** | 统一解析 BLE/UART 指令 |
+| **servo** | PWM 舵机控制 (GPIO 18, 19) |
+| **action** | 预设动作序列管理 |
+| **ble** | BLE GATT 通信服务 |
+| **uart** | UART 通信 (预留，后续扩展) |
+
+## GATT 服务配置
+
+| UUID | 名称 | 描述 |
+|------|------|------|
+| 0x00FF | Service UUID | 主服务 |
+| 0xFF01 | SERVO_CTRL | 舵机控制特征 (读写) |
+| 0xFF02 | ACTION_CTRL | 动作控制特征 (读写) |
+| 0xFF03 | STATUS | 状态推送特征 (Notify) |
+
+## BLE 命令协议
+
+```
+SET_SERVO:0:90:TIME:500   # 设置舵机0到90度，耗时500ms
+SET_SERVO:1:45:TIME:300   # 设置舵机1到45度，耗时300ms
+PLAY_ACTION:0              # 播放预设动作0 (wave)
+PLAY_ACTION:1              # 播放预设动作1 (greet)
+```
+
+## 预设动作
+
+| ID | 名称 | 描述 |
+|----|------|------|
+| 0 | wave | 挥手动作 |
+| 1 | greet | 问候动作 |
+
+## 硬件配置
+
+- **舵机数量**: 2 个
+- **舵机 GPIO**: GPIO 12 (X轴), GPIO 15 (Y轴)
+- **X轴角度范围**: 30° ~ 150°
+- **Y轴角度范围**: 95° ~ 150°
+- **PWM 频率**: 50Hz (20ms 周期)
+- **脉宽范围**: 0.5ms - 2.5ms (对应 0-180°)
+
+## MTU 配置
+
+- **本地 MTU**: 512 字节（在 `ble.c` 中设置）
+- **特征值最大长度**: 500 字节
+
+如需修改 MTU，在 `main/ble/ble.c` 中找到：
+```c
+esp_ble_gatt_set_local_mtu(512);
+```
+
+## 构建命令
 
 ```bash
-idf.py set-target <chip_name>
+# 设置目标芯片
+idf.py set-target esp32
+
+# 编译
+idf.py build
+
+# 烧录和监控
+idf.py -p PORT flash monitor
 ```
 
-### Hardware Required
+## 技术栈
 
-* A development board with ESP32/ESP32-C3/ESP32-H2/ESP32-C2/ESP32-S3 SoC (e.g., ESP32-DevKitC, ESP-WROVER-KIT, etc.)
-* A USB cable for Power supply and programming
+- ESP-IDF 5.x
+- BLE GATT Server
+- LEDC PWM
+- FreeRTOS
 
-See [Development Boards](https://www.espressif.com/en/products/devkits) for more information about it.
+## 后续扩展
 
-### Build and Flash
+- **UART 通信**: 与其他 MCU 通信
+- **更多舵机**: 扩展到 4+ 舵机
+- **平滑移动**: 使用 FreeRTOS 任务实现渐变移动
+- **动作录制**: 录制自定义动作
 
-Run `idf.py -p PORT flash monitor` to build, flash and monitor the project.
+---
 
-(To exit the serial monitor, type ``Ctrl-]``.)
+## 快速开始指南
 
-See the [Getting Started Guide](https://idf.espressif.com/) for full steps to configure and use ESP-IDF to build projects.
+### 1. 连接蓝牙
 
-## Example Output
+设备名称: **ESP_ROBOT**
+
+使用手机 App (如 nRF Connect, LightBlue) 或电脑 BLE 工具扫描并连接。
+
+### 2. GATT 服务结构
+
+| 服务/特征 | UUID | 说明 |
+|-----------|------|------|
+| 主服务 | 0x00FF | |
+| SERVO_CTRL (写) | 0xFF01 | 写入舵机指令 |
+| ACTION_CTRL (写) | 0xFF02 | 写入动作指令 |
+| STATUS (通知) | 0xFF03 | 接收状态反馈 |
+
+### 3. 控制命令
+
+#### 设置舵机角度
+
+写入特征值 **0xFF01**：
 
 ```
-I (0) cpu_start: Starting scheduler on APP CPU.
-I (512) BTDM_INIT: BT controller compile version [1342a48]
-I (522) system_api: Base MAC address is not set
-I (522) system_api: read default base MAC address from EFUSE
-I (522) phy_init: phy_version 4670,719f9f6,Feb 18 2021,17:07:07
-I (942) GATTS_TABLE_DEMO: create attribute table successfully, the number handle = 8
+# 设置X轴(舵机0)到90度，耗时500ms
+SET_SERVO:0:90:TIME:500
 
-I (942) GATTS_TABLE_DEMO: SERVICE_START_EVT, status 0, service_handle 40
-I (962) GATTS_TABLE_DEMO: advertising start successfully
+# 设置Y轴(舵机1)到120度，耗时300ms
+SET_SERVO:1:120:TIME:300
 ```
 
-## Troubleshooting
+格式: `SET_SERVO:<舵机ID>:<角度>:<TIME>:<耗时(ms)>`
 
-For any technical queries, please open an [issue](https://github.com/espressif/esp-idf/issues) on GitHub. We will get back to you soon.
+#### 播放预设动作
+
+写入特征值 **0xFF01**：
+
+```
+# 播放动作0 (wave)
+PLAY_ACTION:0
+
+# 播放动作1 (greet)
+PLAY_ACTION:1
+```
+
+### 4. 示例
+
+使用 nRF Connect App:
+1. 扫描连接 "ESP_ROBOT"
+2. 点击服务右侧的七星图标（Discover Services）
+3. 找到 "SERVO CTRL" 特征 (UUID: 0xFF01)
+4. 点击右上角菜单，选择 **"Write Request"**（不是 Write Without Response）
+5. 输入命令：`SET_SERVO:1:110:TIME:300`
+6. 在底部文本框输入后点击发送按钮
+
+**注意**：必须使用 "Write Request"，否则数据会被截断。

@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "nvs_flash.h"
+#include "esp_bt.h"
+#include "esp_err.h"
+
+#include "ble/ble.h"
+#include "servo/servo.h"
+#include "action/action.h"
+#include "command/command.h"
+
+// 命令处理回调
+static void on_command_received(const char* cmd, const char* params)
+{
+    printf("[app] cmd: %s, params: %s\n", cmd, params);
+
+    // 修复 MEDIUM: params 可能为 NULL
+    if (params == NULL) {
+        return;
+    }
+
+    if (strcmp(cmd, "SET_SERVO") == 0) {
+        // 解析: SET_SERVO:0:90:TIME:500
+        uint8_t id, angle;
+        uint16_t duration;
+        // 修复: 使用冒号分隔
+        int parsed = sscanf(params, "%hhu:%hhu:TIME:%hu", &id, &angle, &duration);
+        if (parsed != 3) {
+            printf("[app] ERROR: Failed to parse SET_SERVO params\n");
+            return;
+        }
+        servo_set_angle(id, angle, duration);
+    }
+    else if (strcmp(cmd, "PLAY_ACTION") == 0) {
+        // 修复 MEDIUM: atoi() 不提供错误检测，使用 strtol() 代替
+        errno = 0;
+        char* endptr;
+        long action_id_long = strtol(params, &endptr, 10);
+        if (errno != 0 || *endptr != '\0' || action_id_long < 0 || action_id_long > 255) {
+            printf("[app] ERROR: Invalid action_id\n");
+            return;
+        }
+        uint8_t action_id = (uint8_t)action_id_long;
+        action_play(action_id);
+    }
+}
+
+// BLE 数据接收回调 - 将数据传给命令解析层
+static void on_ble_data_received(const uint8_t* data, uint16_t len)
+{
+    command_process(data, len);
+}
+
+void app_main(void)
+{
+    // NVS 初始化
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    // 初始化各模块
+    ESP_ERROR_CHECK(servo_init());
+    action_init();
+    command_init();
+
+    // 注册命令回调
+    command_register_callback(on_command_received);
+
+    // 初始化 BLE 并注册数据接收回调
+    ESP_ERROR_CHECK(ble_init());
+    ble_register_receive_callback(on_ble_data_received);
+
+    printf("[app] BLE Robot initialized\n");
+}
