@@ -24,14 +24,34 @@ static void on_command_received(const char* cmd, const char* params)
     }
 
     if (strcmp(cmd, "SET_SERVO") == 0) {
-        // 解析: SET_SERVO:0:90
+        // 解析: SET_SERVO:0:90 或 SET_SERVO:0:90:500
         uint8_t id, angle;
-        int parsed = sscanf(params, "%hhu:%hhu", &id, &angle);
-        if (parsed != 2) {
+        uint16_t duration = 0;
+        int parsed = sscanf(params, "%hhu:%hhu:%hu", &id, &angle, &duration);
+        if (parsed < 2) {
             printf("[app] ERROR: Failed to parse SET_SERVO params\n");
             return;
         }
-        servo_set_angle(id, angle, 0);
+        servo_set_angle(id, angle, duration);
+    }
+    else if (strcmp(cmd, "SERVO_MOVE") == 0) {
+        // 解析: SERVO_MOVE:0:1 (servo_id:direction)
+        // direction: 1 = 正向, -1 = 反向, 0 = 停止
+        int8_t id, direction;
+        int parsed = sscanf(params, "%hhd:%hhd", &id, &direction);
+        if (parsed != 2) {
+            printf("[app] ERROR: Failed to parse SERVO_MOVE params\n");
+            return;
+        }
+        if (id < 0 || id >= SERVO_COUNT) {
+            printf("[app] ERROR: Invalid servo id: %d\n", id);
+            return;
+        }
+        if (direction == 0) {
+            servo_stop(id);
+        } else {
+            servo_start_move(id, direction);
+        }
     }
     else if (strcmp(cmd, "PLAY_ACTION") == 0) {
         // 修复 MEDIUM: atoi() 不提供错误检测，使用 strtol() 代替
