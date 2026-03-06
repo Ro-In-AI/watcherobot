@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 
 static const char* TAG = "servo";
 
@@ -21,6 +22,16 @@ static uint32_t move_start_times[SERVO_COUNT] = {0, 0};  // 移动开始时间�
 
 // FreeRTOS 任务句柄
 static TaskHandle_t servo_task_handle = NULL;
+
+// 命令队列 - X轴和Y轴独立队列
+typedef struct {
+    uint8_t servo_id;
+    uint8_t angle;
+    uint16_t duration_ms;  // 移动持续时间
+} servo_queue_cmd_t;
+
+// X轴队列和Y轴队列（供外部任务使用）
+static QueueHandle_t servo_queues[SERVO_COUNT] = {NULL, NULL};
 
 // GPIO 配置
 #define SERVO_GPIO_1 12  // X轴舵机
@@ -72,6 +83,8 @@ static void servo_tracking_task(void *param) {
 
     while (1) {
         uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+
+        // 注意：队列处理已移至action模块的独立任务
 
         for (int i = 0; i < SERVO_COUNT; i++) {
             // 1. 摇杆模式（持续移动）优先级最高
@@ -191,6 +204,15 @@ esp_err_t servo_init(void) {
         ledc_update_duty(LEDC_LOW_SPEED_MODE, i);
     }
 
+    // 创建X轴和Y轴独立命令队列
+    for (int i = 0; i < SERVO_COUNT; i++) {
+        servo_queues[i] = xQueueCreate(SERVO_QUEUE_SIZE, sizeof(servo_queue_cmd_t));
+        if (servo_queues[i] == NULL) {
+            ESP_LOGE(TAG, "failed to create servo queue %d", i);
+            return ESP_FAIL;
+        }
+    }
+
     // 创建平滑跟踪任务
     BaseType_t ret = xTaskCreatePinnedToCore(
         servo_tracking_task,
@@ -207,9 +229,9 @@ esp_err_t servo_init(void) {
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "initialized (track: %dms/%ddeg, time_ctrl: %d~%dms)",
+    ESP_LOGI(TAG, "initialized (track: %dms/%ddeg, time_ctrl: %d~%dms, queue_size: %d)",
              SERVO_TRACK_PERIOD_MS, SERVO_STEP_SIZE,
-             SERVO_MIN_DURATION, SERVO_MAX_DURATION);
+             SERVO_MIN_DURATION, SERVO_MAX_DURATION, SERVO_QUEUE_SIZE);
     return ESP_OK;
 }
 
@@ -249,9 +271,10 @@ esp_err_t servo_set_angle(uint8_t servo_id, uint8_t angle, uint16_t duration_ms)
         move_durations[servo_id] = duration_ms;
         move_start_times[servo_id] = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
-        ESP_LOGI(TAG, "servo %d (%s) %d->%d deg (time_ctrl: %dms)",
-                 servo_id, (servo_id == 0) ? "X" : "Y",
-                 start_angles[servo_id], angle, duration_ms);
+        ESP_LOGI(TAG, "servo %u (%s) %u->%u deg (time_ctrl: %ums)",
+                 (unsigned int)servo_id, (servo_id == 0) ? "X" : "Y",
+                 (unsigned int)start_angles[servo_id], (unsigned int)angle,
+                 (unsigned int)duration_ms);
     } else {
         // 平滑跟踪模式
         move_durations[servo_id] = 0;
@@ -345,4 +368,94 @@ esp_err_t servo_stop(uint8_t servo_id) {
 
 void servo_task(void) {
     // 任务在 servo_init 中创建
+}
+
+// 队列模式：将命令加入对应舵机的队列（供action模块使用）
+esp_err_t servo_set_angle_delayed(uint8_t servo_id, uint8_t angle, uint16_t duration_ms) {
+    if (servo_id >= SERVO_COUNT) {
+        ESP_LOGW(TAG, "invalid servo_id: %u", (unsigned int)servo_id);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (servo_queues[servo_id] == NULL) {
+        ESP_LOGW(TAG, "queue not initialized for servo %u", (unsigned int)servo_id);
+        return ESP_FAIL;
+    }
+
+    // 角度限位检查
+    uint8_t min_angle, max_angle;
+    get_angle_limits(servo_id, &min_angle, &max_angle);
+    if (angle < min_angle || angle > max_angle) {
+        ESP_LOGE(TAG, "servo %u angle out of range: %u (valid: %u~%u)",
+                 (unsigned int)servo_id, (unsigned int)angle,
+                 (unsigned int)min_angle, (unsigned int)max_angle);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    servo_queue_cmd_t cmd = {
+        .servo_id = servo_id,
+        .angle = angle,
+        .duration_ms = duration_ms
+    };
+
+    // 加入对应舵机的队列
+    if (xQueueSend(servo_queues[servo_id], &cmd, 0) != pdTRUE) {
+        ESP_LOGW(TAG, "queue[%s] full, command dropped", (servo_id == 0) ? "X" : "Y");
+        return ESP_ERR_NO_MEM;
+    }
+
+    ESP_LOGI(TAG, "queued[%s]: servo%u -> %u deg (%ums)",
+             (servo_id == 0) ? "X" : "Y",
+             (unsigned int)servo_id, (unsigned int)angle,
+             (unsigned int)duration_ms);
+
+    return ESP_OK;
+}
+
+// 获取队列句柄（供action模块使用）
+QueueHandle_t servo_get_queue(uint8_t servo_id) {
+    if (servo_id >= SERVO_COUNT) {
+        return NULL;
+    }
+    return servo_queues[servo_id];
+}
+
+// 检查队列是否有数据
+bool servo_queue_has_data(uint8_t servo_id) {
+    if (servo_id >= SERVO_COUNT || servo_queues[servo_id] == NULL) {
+        return false;
+    }
+    return uxQueueMessagesWaiting(servo_queues[servo_id]) > 0;
+}
+
+// 队列模式：停止并清空所有队列
+esp_err_t servo_queue_clear(void) {
+    for (int i = 0; i < SERVO_COUNT; i++) {
+        if (servo_queues[i] == NULL) {
+            continue;
+        }
+        // 清空队列
+        servo_queue_cmd_t cmd;
+        while (xQueueReceive(servo_queues[i], &cmd, 0) == pdTRUE) {
+            // 什么都不做，只是取出所有元素
+        }
+    }
+    ESP_LOGI(TAG, "all queues cleared");
+    return ESP_OK;
+}
+
+// 获取队列剩余命令数（所有队列总和）
+uint8_t servo_queue_remaining(void) {
+    uint8_t total = 0;
+    for (int i = 0; i < SERVO_COUNT; i++) {
+        if (servo_queues[i] != NULL) {
+            total += (uint8_t)uxQueueMessagesWaiting(servo_queues[i]);
+        }
+    }
+    return total;
+}
+
+// 检查队列是否正在执行（任一队列有数据则返回true）
+bool servo_queue_is_running(void) {
+    return servo_queue_has_data(0) || servo_queue_has_data(1);
 }

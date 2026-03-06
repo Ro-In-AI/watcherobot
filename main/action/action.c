@@ -3,6 +3,9 @@
 #include <string.h>
 #include <stdio.h>
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
 
 static const char* TAG = "action";
 
@@ -10,9 +13,74 @@ static action_t actions[MAX_ACTIONS];
 static uint8_t current_action_id = INVALID_ACTION_ID;
 static bool playing = false;
 
+// 队列命令结构（与servo.c中的定义一致）
+typedef struct {
+    uint8_t servo_id;
+    uint8_t angle;
+    uint16_t duration_ms;
+} queue_cmd_t;
+
+// X轴和Y轴队列任务句柄
+static TaskHandle_t queue_task_handles[2] = {NULL, NULL};
+static bool queue_tasks_running = false;
+
+// 队列处理任务 - 每个舵机独立运行
+static void queue_task(void* param) {
+    uint8_t servo_id = (uint32_t)param;  // 0=X轴, 1=Y轴
+    QueueHandle_t queue = servo_get_queue(servo_id);
+    const char* axis_name = (servo_id == 0) ? "X" : "Y";
+
+    ESP_LOGI(TAG, "queue[%s] task started", axis_name);
+
+    while (1) {
+        queue_cmd_t cmd;
+
+        // 从队列取命令（阻塞等待）
+        if (xQueueReceive(queue, &cmd, portMAX_DELAY) == pdTRUE) {
+            ESP_LOGI(TAG, "queue[%s] exec: servo%u -> %u deg (%ums)",
+                     axis_name,
+                     (unsigned int)cmd.servo_id,
+                     (unsigned int)cmd.angle,
+                     (unsigned int)cmd.duration_ms);
+
+            // 执行命令
+            servo_set_angle(cmd.servo_id, cmd.angle, cmd.duration_ms);
+
+            // 等待移动完成
+            vTaskDelay(pdMS_TO_TICKS(cmd.duration_ms));
+
+            ESP_LOGI(TAG, "queue[%s] finished", axis_name);
+        }
+    }
+}
+
 void action_init(void) {
     memset(actions, 0, sizeof(actions));
-    ESP_LOGI(TAG, "action system initialized");
+
+    // 创建X轴队列处理任务
+    xTaskCreatePinnedToCore(
+        queue_task,
+        "servo_queue_x",
+        3072,
+        (void*)0,  // servo_id = 0 (X轴)
+        5,
+        &queue_task_handles[0],
+        0
+    );
+
+    // 创建Y轴队列处理任务
+    xTaskCreatePinnedToCore(
+        queue_task,
+        "servo_queue_y",
+        3072,
+        (void*)1,  // servo_id = 1 (Y轴)
+        5,
+        &queue_task_handles[1],
+        0
+    );
+
+    queue_tasks_running = true;
+    ESP_LOGI(TAG, "action system initialized with %d queue tasks", 2);
 
     // 注册示例动作
     action_t wave = {

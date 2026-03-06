@@ -65,6 +65,21 @@ static void on_command_received(const char* cmd, const char* params)
         uint8_t action_id = (uint8_t)action_id_long;
         action_play(action_id);
     }
+    else if (strcmp(cmd, "QUEUE_ADD") == 0) {
+        // 解析: QUEUE_ADD:servo_id:angle:duration_ms
+        uint8_t servo_id, angle;
+        uint16_t duration;
+        int parsed = sscanf(params, "%hhu:%hhu:%hu", &servo_id, &angle, &duration);
+        if (parsed < 3) {
+            printf("[app] ERROR: Failed to parse QUEUE_ADD params\n");
+            return;
+        }
+        // 加入队列，action模块会创建独立任务处理
+        servo_set_angle_delayed(servo_id, angle, duration);
+    }
+    else if (strcmp(cmd, "QUEUE_CLEAR") == 0) {
+        servo_queue_clear();
+    }
 }
 
 // BLE 数据接收回调 - 将数据传给命令解析层
