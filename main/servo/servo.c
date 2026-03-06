@@ -50,7 +50,7 @@ static QueueHandle_t servo_queues[SERVO_COUNT] = {NULL, NULL};
 #define SERVO_PERIOD_US 20000 // 20ms
 
 // 平滑跟踪参数
-#define SERVO_TRACK_PERIOD_MS 15   // 跟踪周期 15ms
+#define SERVO_TRACK_PERIOD_MS 10  // 跟踪周期 10ms
 #define SERVO_STEP_SIZE 1           // 每步移动1度（平滑跟踪模式）
 #define SERVO_MIN_DURATION 50       // 最小时间控制时间（毫秒）
 #define SERVO_MAX_DURATION 5000     // 最大时间控制时间（毫秒）
