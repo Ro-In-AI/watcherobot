@@ -5,10 +5,12 @@ idf_component_register(
         "servo/servo.c"
         "action/action.c"
         "command/command.c"
+        "uart/uart_handler.c"
     INCLUDE_DIRS
         "."
         "servo"
         "action"
         "command"
         "ble"
+        "uart"
     REQUIRES bt driver nvs_flash)

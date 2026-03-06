@@ -12,6 +12,7 @@
 #include "servo/servo.h"
 #include "action/action.h"
 #include "command/command.h"
+#include "uart/uart_handler.h"
 
 // 命令处理回调
 static void on_command_received(const char* cmd, const char* params)
@@ -106,9 +107,12 @@ void app_main(void)
     // 注册命令回调
     command_register_callback(on_command_received);
 
+    // 初始化 UART 并注册数据接收回调 (MVP-W S3 通讯)
+    uart_handler_init();
+
     // 初始化 BLE 并注册数据接收回调
     ESP_ERROR_CHECK(ble_init());
     ble_register_receive_callback(on_ble_data_received);
 
-    printf("[app] BLE Robot initialized\n");
+    printf("[app] BLE + UART Robot initialized\n");
 }
