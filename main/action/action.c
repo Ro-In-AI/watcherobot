@@ -46,8 +46,10 @@ static void queue_task(void* param) {
             // 执行命令
             servo_set_angle(cmd.servo_id, cmd.angle, cmd.duration_ms);
 
-            // 等待移动完成
-            vTaskDelay(pdMS_TO_TICKS(cmd.duration_ms));
+            // 等待舵机实际到达目标位置（而不是仅仅等待时间）
+            while (servo_is_moving(cmd.servo_id)) {
+                vTaskDelay(pdMS_TO_TICKS(10));  // 每10ms检查一次
+            }
 
             ESP_LOGI(TAG, "queue[%s] finished", axis_name);
         }
