@@ -1,47 +1,82 @@
-# Release Binaries
+# WatcherRobot Body MCU Firmware
 
-This folder contains pre-built firmware binaries for WatcherRobot Body MCU.
+Pre-built firmware binaries for WatcherRobot Body MCU (ESP32).
+
+## Hardware
+
+- **Target Chip**: ESP32
+- **Flash Size**: 4MB
+- **Features**: BLE GATT Server, Servo Control (UART)
 
 ## Files
 
-| File | Address | Description |
-|------|---------|-------------|
-| `bootloader.bin` | 0x0000 | ESP-IDF bootloader |
-| `partition-table.bin` | 0x8000 | Partition table |
-| `WatcherRobotBody.bin` | 0x10000 | Main application |
+| File | Address | Size | Description |
+|------|---------|------|-------------|
+| `bootloader.bin` | 0x0000 | ~26 KB | ESP-IDF bootloader |
+| `partition-table.bin` | 0x8000 | ~3 KB | Partition table |
+| `WatcherRobotBody.bin` | 0x10000 | ~810 KB | Main application |
 
-## Flashing
+## Quick Flash
 
 ### Windows
 ```powershell
-# Activate ESP-IDF first
+# 1. Activate ESP-IDF
 . C:\Espressif\frameworks\esp-idf-v5.2.1\export.ps1
 
-# Flash
+# 2. Flash (auto-detect COM port)
+.\flash.bat
+
+# Or specify port
 .\flash.bat COM3
 ```
 
 ### macOS / Linux
 ```bash
-# Activate ESP-IDF first
+# 1. Activate ESP-IDF
 source $IDF_PATH/export.sh
 
-# Flash
+# 2. Flash (auto-detect port)
+./flash.sh
+
+# Or specify port
 ./flash.sh /dev/ttyUSB0
 ```
 
-## Manual Flashing
+## Manual Flash
+
+If you don't have ESP-IDF, install `esptool` separately:
+
+```bash
+pip install esptool
+```
+
+Then flash:
 
 ```bash
 esptool.py --chip esp32 -p PORT -b 921600 write_flash \
-  0x0000 release/bootloader.bin \
-  0x8000 release/partition-table.bin \
-  0x10000 release/WatcherRobotBody.bin
+  --flash_mode dio --flash_size 4MB --flash_freq 40m \
+  0x0000 bootloader.bin \
+  0x8000 partition-table.bin \
+  0x10000 WatcherRobotBody.bin
 ```
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `esptool.py not found` | Run ESP-IDF export script or `pip install esptool` |
+| `Failed to connect` | Hold BOOT button, press RESET, release BOOT |
+| `Wrong COM port` | Check Device Manager (Windows) or `ls /dev/tty*` (Linux/Mac) |
+| Driver not installed | Install CH340 or CP2102 driver |
 
 ## Build from Source
 
 ```bash
-./build_release.sh   # macOS/Linux
-build_release.bat    # Windows
+# macOS/Linux
+./build_release.sh
+
+# Windows
+.\build_release.bat
 ```
+
+Requires ESP-IDF v5.2+ installed.
