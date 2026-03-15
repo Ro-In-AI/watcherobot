@@ -1,0 +1,68 @@
+{
+  "$schema": "./ble_config.schema.json",
+  "ble_json_buffer_size": 512,
+  "ble_device_name": "ESP_ROBOT",
+  "services": [
+    {
+      "name": "RobotService",
+      "uuid": "FF00",
+      "description": "机器人主服务",
+      "characteristics": [
+        {
+          "name": "SERVO_CTRL",
+          "uuid": "FF01",
+          "type": [
+            "WRITE",
+            "READ",
+            "NOTIFY"
+          ],
+          "value_format": "string",
+          "description": "舵机控制 - 写入命令如 SET_SERVO:0:90"
+        },
+        {
+          "name": "ACTION_CTRL",
+          "uuid": "FF02",
+          "type": [
+            "WRITE",
+            "READ"
+          ],
+          "value_format": "string",
+          "description": "动作控制 - 写入命令如 PLAY_ACTION:0"
+        },
+        {
+          "name": "STATUS",
+          "uuid": "FF03",
+          "type": [
+            "READ",
+            "NOTIFY"
+          ],
+          "value_format": "string",
+          "description": "状态推送 - 接收机器人状态反馈"
+        }
+      ]
+    },
+    {
+      "name": "DeviceInformationService",
+      "uuid": "180A",
+      "description": "设备信息服务",
+      "characteristics": [
+        {
+          "name": "ManufacturerNameString",
+          "uuid": "2A29",
+          "type": ["READ"],
+          "value": "ESP32 Robot",
+          "value_format": "string",
+          "description": "设备制造商名称"
+        },
+        {
+          "name": "FirmwareRevisionString",
+          "uuid": "2A26",
+          "type": ["READ"],
+          "value": "1.0.0",
+          "value_format": "string",
+          "description": "设备固件版本"
+        }
+      ]
+    }
+  ]
+}

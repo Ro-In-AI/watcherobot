@@ -1,0 +1,57 @@
+{
+  "scene_name": "Scene",
+  "frame_start": 1,
+  "frame_end": 240,
+  "fps": 60,
+  "animated_objects": [
+    {
+      "object_name": "底部轴",
+      "object_type": "MESH",
+      "action_name": "底部轴动作",
+      "keyframe_data": [
+        {
+          "frame_number": 1,
+          "active_axis": "z",
+          "rotation_angle": 90.0
+        }
+      ]
+    },
+    {
+      "object_name": "头轴",
+      "object_type": "EMPTY",
+      "action_name": "头轴动作.001",
+      "keyframe_data": [
+        {
+          "frame_number": 1,
+          "active_axis": "x",
+          "rotation_angle": 110.0
+        },
+        {
+          "frame_number": 92,
+          "active_axis": "x",
+          "rotation_angle": 125.0
+        },
+        {
+          "frame_number": 100,
+          "active_axis": "x",
+          "rotation_angle": 105.0
+        },
+        {
+          "frame_number": 183,
+          "active_axis": "x",
+          "rotation_angle": 115.0
+        },
+        {
+          "frame_number": 192,
+          "active_axis": "x",
+          "rotation_angle": 95.0
+        },
+        {
+          "frame_number": 240,
+          "active_axis": "x",
+          "rotation_angle": 110.0
+        }
+      ]
+    }
+  ]
+}

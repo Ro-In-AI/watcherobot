@@ -1,0 +1,25 @@
+# 隐藏文件/目录
+.*
+
+# 但保留以下必要的配置文件
+!.gitignore
+!.editorconfig
+!.gitattributes
+
+# 忽略的目录
+.vscode/
+.claude/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+.DS_Store
+Thumbs.db
