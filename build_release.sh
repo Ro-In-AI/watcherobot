@@ -44,7 +44,12 @@ esptool.py --chip esp32 merge_bin \
     --flash_freq 40m \
     0x0000 build/bootloader/bootloader.bin \
     0x8000 build/partition_table/partition-table.bin \
-    0x10000 build/watcherobot.bin
+    0x10000 build/WatcherRobotBody.bin
+
+# Copy to release folder
+echo "[4/4] Copying to release folder..."
+mkdir -p "$PROJECT_ROOT/release"
+cp -f "$PROJECT_ROOT/build/watcherobot_merged.bin" "$PROJECT_ROOT/release/watcherobot_merged.bin"
 
 echo ""
 echo "========================================"
@@ -52,10 +57,8 @@ echo " Build Complete!"
 echo "========================================"
 echo ""
 echo "Output files:"
-echo "  build/bootloader/bootloader.bin"
-echo "  build/partition_table/partition-table.bin"
-echo "  build/watcherobot.bin"
-echo "  build/watcherobot_merged.bin  (single flashable file)"
+echo "  build/watcherobot_merged.bin"
+echo "  release/watcherobot_merged.bin  (for distribution)"
 echo ""
 echo "Flash with: ./flash.sh /dev/ttyUSB0"
 echo "Example: ./flash.sh /dev/ttyUSB0"

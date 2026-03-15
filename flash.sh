@@ -59,8 +59,12 @@ fi
 # Set project root
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-# Check if merged binary exists
-if [ ! -f "$PROJECT_ROOT/build/watcherobot_merged.bin" ]; then
+# Check if merged binary exists (prefer release folder)
+if [ -f "$PROJECT_ROOT/release/watcherobot_merged.bin" ]; then
+    BINARY="$PROJECT_ROOT/release/watcherobot_merged.bin"
+elif [ -f "$PROJECT_ROOT/build/watcherobot_merged.bin" ]; then
+    BINARY="$PROJECT_ROOT/build/watcherobot_merged.bin"
+else
     echo "[ERROR] Merged binary not found!"
     echo "Please run ./build_release.sh first to create the binary."
     exit 1
@@ -69,7 +73,7 @@ fi
 echo ""
 echo "[INFO] Port: $PORT"
 echo "[INFO] Baud: $BAUD"
-echo "[INFO] Binary: build/watcherobot_merged.bin"
+echo "[INFO] Binary: $BINARY"
 echo ""
 echo "[1/2] Entering bootloader mode..."
 echo "      Please ensure the device is connected and in download mode."
@@ -77,7 +81,7 @@ echo ""
 
 # Flash the merged binary
 echo "[2/2] Flashing..."
-esptool.py --chip esp32 -p "$PORT" -b "$BAUD" write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x0 "$PROJECT_ROOT/build/watcherobot_merged.bin"
+esptool.py --chip esp32 -p "$PORT" -b "$BAUD" write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x0 "$BINARY"
 
 echo ""
 echo "========================================"

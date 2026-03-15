@@ -32,6 +32,9 @@ flasher_args.json # Generated in build directory
 sdkconfig.old
 sdkconfig
 
+# Exception: release binaries for distribution
+!release/*.bin
+
 # ESP-IDF dependencies
 # For older versions or manual component management
 /components/.idf/
