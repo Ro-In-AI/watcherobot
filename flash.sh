@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# One-Click Flash Script for WatcherRobot Body MCU
+# Flash Script for WatcherRobot Body MCU
 # Usage: ./flash.sh [PORT]
 # Example: ./flash.sh /dev/ttyUSB0
 # ============================================================
@@ -59,29 +59,39 @@ fi
 # Set project root
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-# Check if merged binary exists (prefer release folder)
-if [ -f "$PROJECT_ROOT/release/watcherobot_merged.bin" ]; then
-    BINARY="$PROJECT_ROOT/release/watcherobot_merged.bin"
-elif [ -f "$PROJECT_ROOT/build/watcherobot_merged.bin" ]; then
-    BINARY="$PROJECT_ROOT/build/watcherobot_merged.bin"
+# Check if binaries exist (prefer release folder)
+if [ -f "$PROJECT_ROOT/release/bootloader.bin" ]; then
+    BIN_DIR="$PROJECT_ROOT/release"
+elif [ -f "$PROJECT_ROOT/build/bootloader/bootloader.bin" ]; then
+    BIN_DIR="$PROJECT_ROOT/build"
 else
-    echo "[ERROR] Merged binary not found!"
-    echo "Please run ./build_release.sh first to create the binary."
+    echo "[ERROR] Binary files not found!"
+    echo "Please run ./build_release.sh first."
     exit 1
 fi
 
 echo ""
 echo "[INFO] Port: $PORT"
 echo "[INFO] Baud: $BAUD"
-echo "[INFO] Binary: $BINARY"
+echo "[INFO] Binary dir: $BIN_DIR"
 echo ""
 echo "[1/2] Entering bootloader mode..."
 echo "      Please ensure the device is connected and in download mode."
 echo ""
 
-# Flash the merged binary
+# Flash all binaries
 echo "[2/2] Flashing..."
-esptool.py --chip esp32 -p "$PORT" -b "$BAUD" write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x0 "$BINARY"
+if [ "$BIN_DIR" = "$PROJECT_ROOT/release" ]; then
+    esptool.py --chip esp32 -p "$PORT" -b "$BAUD" write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m \
+        0x0000 "$BIN_DIR/bootloader.bin" \
+        0x8000 "$BIN_DIR/partition-table.bin" \
+        0x10000 "$BIN_DIR/WatcherRobotBody.bin"
+else
+    esptool.py --chip esp32 -p "$PORT" -b "$BAUD" write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m \
+        0x0000 "$BIN_DIR/bootloader/bootloader.bin" \
+        0x8000 "$BIN_DIR/partition_table/partition-table.bin" \
+        0x10000 "$BIN_DIR/WatcherRobotBody.bin"
+fi
 
 echo ""
 echo "========================================"

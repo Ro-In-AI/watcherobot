@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM One-Click Flash Script for WatcherRobot Body MCU
+REM Flash Script for WatcherRobot Body MCU
 REM Usage: flash.bat COM_PORT
 REM Example: flash.bat COM3
 REM ============================================================
@@ -43,29 +43,34 @@ if "%PORT%"=="" (
 REM Set project root
 set "PROJECT_ROOT=%~dp0"
 
-REM Check if merged binary exists (prefer release folder)
-if exist "%PROJECT_ROOT%release\watcherobot_merged.bin" (
-    set "BINARY=%PROJECT_ROOT%release\watcherobot_merged.bin"
-) else if exist "%PROJECT_ROOT%build\watcherobot_merged.bin" (
-    set "BINARY=%PROJECT_ROOT%build\watcherobot_merged.bin"
+REM Check if binaries exist (prefer release folder)
+set "BIN_DIR="
+if exist "%PROJECT_ROOT%release\bootloader.bin" (
+    set "BIN_DIR=%PROJECT_ROOT%release"
+) else if exist "%PROJECT_ROOT%build\bootloader\bootloader.bin" (
+    set "BIN_DIR=%PROJECT_ROOT%build"
 ) else (
-    echo [ERROR] Merged binary not found!
-    echo Please run build_release.bat first to create the binary.
+    echo [ERROR] Binary files not found!
+    echo Please run build_release.bat first.
     exit /b 1
 )
 
 echo.
 echo [INFO] Port: %PORT%
 echo [INFO] Baud: %BAUD%
-echo [INFO] Binary: %BINARY%
+echo [INFO] Binary dir: %BIN_DIR%
 echo.
 echo [1/2] Entering bootloader mode...
 echo       Please ensure the device is connected and in download mode.
 echo.
 
-REM Flash the merged binary
+REM Flash all binaries
 echo [2/2] Flashing...
-esptool.py --chip esp32 -p "%PORT%" -b %BAUD% write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x0 "%BINARY%"
+if "%BIN_DIR%"=="%PROJECT_ROOT%release" (
+    esptool.py --chip esp32 -p "%PORT%" -b %BAUD% write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x0000 "%BIN_DIR%\bootloader.bin" 0x8000 "%BIN_DIR%\partition-table.bin" 0x10000 "%BIN_DIR%\WatcherRobotBody.bin"
+) else (
+    esptool.py --chip esp32 -p "%PORT%" -b %BAUD% write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x0000 "%BIN_DIR%\bootloader\bootloader.bin" 0x8000 "%BIN_DIR%\partition_table\partition-table.bin" 0x10000 "%BIN_DIR%\WatcherRobotBody.bin"
+)
 
 if errorlevel 1 (
     echo.

@@ -1,7 +1,6 @@
 @echo off
 REM ============================================================
-REM Build Release Binary for WatcherRobot Body MCU
-REM This creates a single flashable .bin file
+REM Build Release Binaries for WatcherRobot Body MCU
 REM ============================================================
 
 setlocal EnableDelayedExpansion
@@ -25,49 +24,31 @@ REM Set project root
 set "PROJECT_ROOT=%~dp0"
 cd /d "%PROJECT_ROOT%"
 
-REM Clean previous build
-if exist "build\watcherobot_merged.bin" (
-    echo [1/4] Cleaning previous release...
-    del /q build\watcherobot_merged.bin 2>nul
-)
-
 REM Build the project
-echo [2/4] Building project...
+echo [1/2] Building project...
 idf.py build
 if errorlevel 1 (
     echo [ERROR] Build failed!
     exit /b 1
 )
 
-REM Create merged binary for easy flashing
-echo [3/4] Creating merged binary...
-esptool.py --chip esp32 merge_bin ^
-    -o build/watcherobot_merged.bin ^
-    --flash_mode dio ^
-    --flash_size 4MB ^
-    --flash_freq 40m ^
-    0x0000 build/bootloader/bootloader.bin ^
-    0x8000 build/partition_table/partition-table.bin ^
-    0x10000 build/WatcherRobotBody.bin
-
-if errorlevel 1 (
-    echo [ERROR] Failed to create merged binary!
-    exit /b 1
-)
-
-REM Copy to release folder
-echo [4/4] Copying to release folder...
+REM Copy binaries to release folder
+echo [2/2] Copying binaries to release folder...
 if not exist "%PROJECT_ROOT%release" mkdir "%PROJECT_ROOT%release"
-copy /y "%PROJECT_ROOT%build\watcherobot_merged.bin" "%PROJECT_ROOT%release\watcherobot_merged.bin" >nul
+
+copy /y "%PROJECT_ROOT%build\bootloader\bootloader.bin" "%PROJECT_ROOT%release\bootloader.bin" >nul
+copy /y "%PROJECT_ROOT%build\partition_table\partition-table.bin" "%PROJECT_ROOT%release\partition-table.bin" >nul
+copy /y "%PROJECT_ROOT%build\WatcherRobotBody.bin" "%PROJECT_ROOT%release\WatcherRobotBody.bin" >nul
 
 echo.
 echo ========================================
 echo  Build Complete!
 echo ========================================
 echo.
-echo Output files:
-echo   build\watcherobot_merged.bin
-echo   release\watcherobot_merged.bin  (for distribution)
+echo Output files in release/:
+echo   bootloader.bin       (0x0000)
+echo   partition-table.bin  (0x8000)
+echo   WatcherRobotBody.bin (0x10000)
 echo.
 echo Flash with: flash.bat COM_PORT
 echo Example: flash.bat COM3

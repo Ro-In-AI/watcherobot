@@ -34,6 +34,7 @@ sdkconfig
 
 # Exception: release binaries for distribution
 !release/*.bin
+!release/**/*.bin
 
 # ESP-IDF dependencies
 # For older versions or manual component management
