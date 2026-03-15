@@ -1,7 +1,17 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-S3 |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | -------- |
+| Supported Targets | ESP32 |
+| ----------------- | ----- |
 
-# BLE 遥控机器人 (WatcherRobotBody)
+<div align="center">
+
+# WatcherRobot Body
+
+**ESP32 BLE 遥控机器人固件**
+
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.2+-green.svg)](https://docs.espressif.com/projects/esp-idf/)
+[![Platform](https://img.shields.io/badge/platform-ESP32-orange.svg)](https://www.espressif.com/en/products/socs/esp32)
+
+</div>
 
 基于 ESP32 的 BLE 遥控机器人项目，支持通过蓝牙远程控制两个 PWM 舵机，具有平滑移动和预设动作功能。后续可扩展 UART 与其他 MCU 通信。
 
@@ -261,3 +271,38 @@ PLAY_ACTION:1
 6. 在底部文本框输入后点击发送按钮
 
 **注意**：必须使用 "Write Request"，否则数据会被截断。
+
+---
+
+## 📦 Releases
+
+Pre-built binaries are available in the [release/](release/) folder:
+
+| File | Address |
+|------|---------|
+| `bootloader.bin` | 0x0000 |
+| `partition-table.bin` | 0x8000 |
+| `WatcherRobotBody.bin` | 0x10000 |
+
+See [release/README.md](release/README.md) for flashing instructions.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+- [Report a Bug](https://github.com/Ro-In-AI/WatcheRobot/issues/new?template=bug_report.md)
+- [Request a Feature](https://github.com/Ro-In-AI/WatcheRobot/issues/new?template=feature_request.md)
+
+---
+
+## 📋 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
