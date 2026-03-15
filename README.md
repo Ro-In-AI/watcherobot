@@ -288,21 +288,6 @@ See [release/README.md](release/README.md) for flashing instructions.
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-- [Report a Bug](https://github.com/Ro-In-AI/WatcheRobot/issues/new?template=bug_report.md)
-- [Request a Feature](https://github.com/Ro-In-AI/WatcheRobot/issues/new?template=feature_request.md)
-
----
-
 ## 📋 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
